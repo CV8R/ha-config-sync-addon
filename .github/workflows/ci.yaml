@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+jobs:
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          cd ha-config-sync
+          pip install -r requirements.txt
+          pip install -r tests/requirements-test.txt
+          pip install black isort ruff
+
+      - name: Run black
+        run: |
+          cd ha-config-sync
+          black --check rootfs/usr/bin/sync_config.py tests/
+
+      - name: Run isort
+        run: |
+          cd ha-config-sync
+          isort --check-only rootfs/usr/bin/sync_config.py tests/
+
+      - name: Run ruff
+        run: |
+          cd ha-config-sync
+          ruff check rootfs/usr/bin/sync_config.py tests/
+
+      - name: Run tests
+        run: |
+          cd ha-config-sync
+          pytest tests/ -v --cov=rootfs/usr/bin --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./ha-config-sync/coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  yaml-lint:
+    name: YAML Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: YAML Lint
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: ha-config-sync/
+          strict: true
+
+  docker-build:
+    name: Test Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ha-config-sync
+          file: ./ha-config-sync/Dockerfile
+          push: false
+          tags: ha-config-sync:test
+          build-args: |
+            BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.19
+
+  pre-commit:
+    name: Pre-commit Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.0

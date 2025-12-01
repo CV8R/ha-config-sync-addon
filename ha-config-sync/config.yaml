@@ -1,0 +1,41 @@
+---
+name: HA Config Sync
+version: "1.0.0"
+slug: ha-config-sync
+description: Automatically sync Home Assistant configuration changes to GitHub
+url: https://github.com/karl-vanderslice/ha-config-sync-addon
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+init: false
+startup: application
+boot: auto
+hassio_api: true
+homeassistant_api: false
+map:
+  - config:rw
+options:
+  github_repository: ""
+  github_token: ""
+  git_user_name: "Home Assistant"
+  git_user_email: "ha@example.com"
+  watched_files:
+    - automations.yaml
+    - .HA_VERSION
+  commit_message_template: "chore(ha): auto-sync {files}"
+  sync_interval: 900  # 15 minutes in seconds
+  branch: main
+schema:
+  github_repository: str
+  github_token: password
+  git_user_name: str
+  git_user_email: str
+  watched_files:
+    - str
+  commit_message_template: str?
+  sync_interval: int(60,3600)?
+  branch: str?
+image: ghcr.io/karl-vanderslice/ha-config-sync-{arch}
