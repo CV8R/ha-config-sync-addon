@@ -1,0 +1,36 @@
+{
+    "configuration": {
+        "github_repository": {
+            "name": "GitHub Repository",
+            "description": "GitHub repository in format owner/repo (e.g., john/homeassistant-config)"
+        },
+        "github_token": {
+            "name": "GitHub Token",
+            "description": "GitHub Personal Access Token with repo permissions"
+        },
+        "git_user_name": {
+            "name": "Git User Name",
+            "description": "Name to use for Git commits"
+        },
+        "git_user_email": {
+            "name": "Git User Email",
+            "description": "Email to use for Git commits"
+        },
+        "watched_files": {
+            "name": "Watched Files",
+            "description": "List of files to monitor for changes"
+        },
+        "commit_message_template": {
+            "name": "Commit Message Template",
+            "description": "Template for commit messages. Use {files} for changed files, {timestamp} for current time"
+        },
+        "sync_interval": {
+            "name": "Sync Interval",
+            "description": "How often to commit changes (in seconds)"
+        },
+        "branch": {
+            "name": "Git Branch",
+            "description": "Git branch to push changes to"
+        }
+    }
+}
