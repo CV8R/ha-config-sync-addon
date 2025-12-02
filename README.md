@@ -3,7 +3,9 @@
 [![GitHub Release][releases-shield]][releases]
 [![License][license-shield]](LICENSE)
 
-Automatically synchronize your Home Assistant configuration files to GitHub. This addon monitors specified YAML files and commits changes to your repository, keeping your config backed up and version-controlled.
+> 🔄 Automatic GitHub sync for Home Assistant configuration files
+
+A Home Assistant addon that automatically backs up your configuration to GitHub. It monitors specified YAML files, detects changes, and commits them to your repository at configurable intervals. No manual backups needed - your automations, scripts, and config are always version-controlled and safe.
 
 ## About
 

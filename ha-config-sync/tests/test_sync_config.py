@@ -7,6 +7,9 @@ Tests cover file watching, git operations, and error handling.
 import hashlib
 import json
 import os
+
+# Import the modules to test
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -14,9 +17,6 @@ from unittest.mock import MagicMock, Mock, patch
 
 import git
 import pytest
-
-# Import the modules to test
-import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "rootfs" / "usr" / "bin"))
 

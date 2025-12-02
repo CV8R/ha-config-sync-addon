@@ -128,7 +128,7 @@ class GitHubSync:
 
             # Configure remote with token
             remote_url = f"https://{self.github_token}@github.com/{self.github_repo}.git"
-            
+
             try:
                 origin = self.repo.remote("origin")
                 origin.set_url(remote_url)
