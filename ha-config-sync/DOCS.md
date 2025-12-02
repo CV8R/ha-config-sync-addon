@@ -75,11 +75,13 @@ The addon is configured through the Home Assistant UI.
 - Maximum: 3600 seconds (1 hour)
 - Default: 900 seconds (15 minutes)
 
-**`commit_message_template`** (default: `chore(ha): auto-sync {files}`)
+**`commit_message_template`** (default: `chore(ha): auto-sync {files} [HA {ha_version}] ({git_hash})`)
 - Template for commit messages
 - Variables available:
   - `{files}` - List of files that changed
   - `{timestamp}` - ISO format timestamp
+  - `{ha_version}` - Home Assistant version from `.HA_VERSION` file (if included in watched files)
+  - `{git_hash}` - Short git commit hash (7 characters) of the previous commit
 
 ## Usage
 
@@ -148,16 +150,22 @@ Don't watch:
 
 ### Commit Message Customization
 
-You can customize commit messages:
+You can customize commit messages using available variables:
 
 ```yaml
-commit_message_template: "feat(ha): update {files} on {timestamp}"
+commit_message_template: "feat(ha): update {files} [HA {ha_version}] ({git_hash})"
 ```
 
 This will produce commits like:
 ```
-feat(ha): update automations.yaml on 2025-12-01T15:30:00
+feat(ha): update automations.yaml [HA 2025.11.3] (a1b2c3d)
 ```
+
+Available variables:
+- `{files}` - Comma-separated list of changed files
+- `{ha_version}` - HA version from `.HA_VERSION` (or "unknown")
+- `{git_hash}` - Previous commit's short hash
+- `{timestamp}` - ISO 8601 timestamp
 
 ## Monitoring
 

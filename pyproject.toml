@@ -30,7 +30,7 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "-v --cov=rootfs/usr/bin --cov-report=term-missing"
+addopts = "-v"
 
 [tool.coverage.run]
 source = ["rootfs/usr/bin"]

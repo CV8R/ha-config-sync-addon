@@ -200,10 +200,29 @@ class GitHubSync:
                 self.pending_changes.clear()
                 return False
 
+            # Read HA version if .HA_VERSION is in the changed files
+            ha_version = None
+            if ".HA_VERSION" in files_to_commit:
+                ha_version_file = self.repo_path / ".HA_VERSION"
+                if ha_version_file.exists():
+                    try:
+                        ha_version = ha_version_file.read_text().strip()
+                    except Exception as e:
+                        logger.warning(f"Could not read .HA_VERSION: {e}")
+
+            # Get current commit short hash for reference
+            try:
+                current_hash = self.repo.head.commit.hexsha[:7]
+            except Exception:
+                current_hash = "initial"
+
             # Create commit message
             files_str = ", ".join(files_to_commit)
             commit_msg = self.commit_msg_template.format(
-                files=files_str, timestamp=datetime.now().isoformat()
+                files=files_str,
+                timestamp=datetime.now().isoformat(),
+                ha_version=ha_version or "unknown",
+                git_hash=current_hash,
             )
 
             # Commit

@@ -25,7 +25,7 @@ options:
   watched_files:
     - automations.yaml
     - .HA_VERSION
-  commit_message_template: "chore(ha): auto-sync {files}"
+  commit_message_template: "chore(ha): auto-sync {files} [HA {ha_version}] ({git_hash})"
   sync_interval: 900  # 15 minutes in seconds
   branch: main
 schema:

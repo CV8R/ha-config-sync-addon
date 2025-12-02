@@ -211,6 +211,10 @@ class TestGitHubSync:
             commit_msg_template="test: {files}",
         )
 
+        # Create .HA_VERSION file
+        version_file = temp_repo / ".HA_VERSION"
+        version_file.write_text("2024.1.0")
+
         # Create and modify a file
         test_file = temp_repo / "automations.yaml"
         test_file.write_text("new content")
@@ -242,6 +246,44 @@ class TestGitHubSync:
 
         result = sync.commit_and_push()
         assert result is False
+
+    @patch("git.Remote.push")
+    def test_commit_message_template_variables(self, mock_push, temp_repo):
+        """Test commit message template with all variables."""
+        # Mock successful push
+        push_info = Mock()
+        push_info.flags = git.PushInfo.FAST_FORWARD
+        mock_push.return_value = [push_info]
+
+        # Create .HA_VERSION file
+        version_file = temp_repo / ".HA_VERSION"
+        version_file.write_text("2024.1.0\n")
+
+        sync = GitHubSync(
+            repo_path=str(temp_repo),
+            github_repo="user/repo",
+            github_token="fake_token",
+            commit_msg_template="chore(ha): {files} [HA {ha_version}] ({git_hash})",
+        )
+
+        # Create and modify a file
+        test_file = temp_repo / "automations.yaml"
+        test_file.write_text("new content")
+        sync.add_pending_change(str(test_file))
+
+        # Get current commit hash for verification
+        repo = git.Repo(temp_repo)
+        prev_hash = repo.head.commit.hexsha[:7]
+
+        result = sync.commit_and_push()
+        assert result is True
+
+        # Verify commit message contains all template variables
+        last_commit_msg = repo.head.commit.message
+        assert "automations.yaml" in last_commit_msg
+        assert "2024.1.0" in last_commit_msg
+        assert prev_hash in last_commit_msg
+        assert "[HA 2024.1.0]" in last_commit_msg
 
     @patch("git.Remote.pull")
     def test_pull_latest_success(self, mock_pull, temp_repo):

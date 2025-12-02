@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Dynamic commit message template variables: `{ha_version}` and `{git_hash}`
+- Automatic reading of `.HA_VERSION` file content for version tracking
+- Previous commit hash extraction for traceability
+
+### Changed
+- Default commit message template now includes HA version and git hash
+- Updated documentation to reflect new template variables
+
 ## [1.0.0] - 2025-12-01
 
 ### Added

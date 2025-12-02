@@ -54,7 +54,7 @@ watched_files:
   - .HA_VERSION
   - scenes.yaml
   - scripts.yaml
-commit_message_template: "chore(ha): auto-sync {files}"
+commit_message_template: "chore(ha): auto-sync {files} [HA {ha_version}] ({git_hash})"
 ```
 
 #### Configuration Options

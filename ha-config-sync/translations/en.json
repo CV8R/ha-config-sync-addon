@@ -22,7 +22,7 @@
         },
         "commit_message_template": {
             "name": "Commit Message Template",
-            "description": "Template for commit messages. Use {files} for changed files, {timestamp} for current time"
+            "description": "Template for commit messages. Use {files} for changed files, {ha_version} for HA version, {git_hash} for previous commit hash, {timestamp} for current time"
         },
         "sync_interval": {
             "name": "Sync Interval",
