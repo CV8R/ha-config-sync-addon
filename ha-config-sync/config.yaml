@@ -38,4 +38,4 @@ schema:
   commit_message_template: str?
   sync_interval: int(60,3600)?
   branch: str?
-image: ghcr.io/karl-vanderslice/ha-config-sync-{arch}
+#image: ghcr.io/karl-vanderslice/ha-config-sync-{arch}
