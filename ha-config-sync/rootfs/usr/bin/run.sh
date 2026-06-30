@@ -16,10 +16,11 @@ export BRANCH=$(bashio::config 'branch' 'main')
 export SYNC_INTERVAL=$(bashio::config 'sync_interval' '900')
 export COMMIT_MSG_TEMPLATE=$(bashio::config 'commit_message_template' 'chore(ha): auto-sync {files}')
 
-# Export watched files as a JSON array. bashio::config.json returns the
-# option's raw JSON straight from options.json, so no manual line-splitting
-# or jq parsing of plain-text output is needed (that was the previous bug).
-export WATCHED_FILES=$(bashio::config.json 'watched_files')
+# Export watched files as a JSON array, read directly from the addon's
+# options file. bashio::config returns plain-text (newline-separated for
+# lists), which is never valid JSON on its own - reading the raw option
+# straight out of options.json with jq avoids that mismatch entirely.
+export WATCHED_FILES=$(jq -c '.watched_files // []' /data/options.json)
 
 # Validate required configuration
 if [ -z "$REPO_URL" ]; then
