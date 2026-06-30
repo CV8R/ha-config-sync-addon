@@ -75,15 +75,36 @@ class ConfigSyncHandler(FileSystemEventHandler):
             return True
         return False
 
+    def _handle_possible_change(self, path: str):
+        """Check a path that may have changed and fire the callback if so.
+
+        Shared by on_modified, on_created, and on_moved, since editors that
+        save via a temp-file-then-rename (confirmed here by an inode change
+        across saves) produce a created/moved event rather than a modified
+        one for the final filename.
+        """
+        if self._is_watched_file(path):
+            if self._has_file_changed(path):
+                logger.info(f"Detected change in {path}")
+                self.callback(path)
+
     def on_modified(self, event):
-        """Handle file modification events."""
+        """Handle in-place file modification events."""
         if event.is_directory:
             return
+        self._handle_possible_change(event.src_path)
 
-        if self._is_watched_file(event.src_path):
-            if self._has_file_changed(event.src_path):
-                logger.info(f"Detected change in {event.src_path}")
-                self.callback(event.src_path)
+    def on_created(self, event):
+        """Handle file creation events (e.g. a save that creates a new inode)."""
+        if event.is_directory:
+            return
+        self._handle_possible_change(event.src_path)
+
+    def on_moved(self, event):
+        """Handle file move/rename events (e.g. atomic temp-file-then-rename saves)."""
+        if event.is_directory:
+            return
+        self._handle_possible_change(event.dest_path)
 
 
 class GitRemoteSync:
