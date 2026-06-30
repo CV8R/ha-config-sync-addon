@@ -1,7 +1,7 @@
 # GitHub Copilot Instructions for HA Config Sync Addon
 
 ## Project Context
-This is a Home Assistant addon written in Python that automatically syncs configuration files to GitHub. The addon monitors specified YAML files and commits changes to a Git repository.
+This is a Home Assistant addon written in Python that automatically syncs configuration files to a remote Git repository - GitHub, Gitea, GitLab, or any self-hosted server with HTTPS token auth. The addon monitors specified YAML files and commits changes to a Git repository.
 
 ## Your Role
 You are a coding assistant specialized in:
@@ -226,8 +226,8 @@ docker build -t ha-config-sync:dev .
 
 # Run addon locally
 docker run --rm -it \
-  -e GITHUB_REPO="user/repo" \
-  -e GITHUB_TOKEN="token" \
+  -e REPO_URL="https://example.com/user/repo.git" \
+  -e GIT_TOKEN="token" \
   -e WATCHED_FILES='["automations.yaml"]' \
   -v /path/to/config:/config \
   ha-config-sync:dev
@@ -257,7 +257,7 @@ When helping users:
 - Check logs first
 - Verify configuration is correct
 - Test git credentials separately
-- Check GitHub repository permissions
+- Check Git host repository permissions
 - Review sync interval settings
 
 ## Version Updates
