@@ -2,12 +2,13 @@
 
 ## Configuration
 
-### GitHub Repository Setup
+### Git Repository Setup
 
-Before using this addon, you need to set up a GitHub repository and obtain a Personal Access Token.
+Before using this addon, you need a Git repository and an access token. This works with GitHub, Gitea, GitLab, or any other self-hosted server that supports HTTPS token authentication.
 
-#### Creating a GitHub Repository
+#### Creating a Repository
 
+**GitHub**
 1. Go to [GitHub](https://github.com)
 2. Click **New repository**
 3. Name it (e.g., `homeassistant-config`)
@@ -15,32 +16,48 @@ Before using this addon, you need to set up a GitHub repository and obtain a Per
 5. Initialize with a README if desired
 6. Click **Create repository**
 
-#### Creating a Personal Access Token
+**Gitea / GitLab / self-hosted**
+Create a new (private, recommended) repository through your host's UI the same way - the addon only needs a valid HTTPS clone URL once it exists.
 
+#### Creating an Access Token
+
+**GitHub**
 1. Go to [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens)
 2. Click **Generate new token (classic)**
 3. Give it a descriptive name (e.g., "HA Config Sync")
 4. Set expiration (or choose "No expiration" if you trust your HA security)
-5. Select scopes:
-   - ✅ `repo` (Full control of private repositories)
-6. Click **Generate token**
-7. **Copy the token immediately** - you won't see it again!
+5. Select scopes: ✅ `repo` (Full control of private repositories)
+6. Click **Generate token** and copy it immediately - you won't see it again
+
+**Gitea**
+1. Go to your profile → **Settings** → **Applications**
+2. Under **Manage Access Tokens**, give it a name and select scope `write:repository`
+3. Click **Generate Token** and copy it immediately
+
+**GitLab**
+1. Go to **User Settings** → **Access Tokens**
+2. Give it a name and select scope `write_repository`
+3. Click **Create personal access token** and copy it immediately
 
 ### Addon Configuration
 
-The addon is configured through the Home Assistant UI.
+The addon is configured through the Home Assistant UI. Just paste the full clone URL of your repository - it works the same regardless of host.
 
 #### Required Settings
 
-**`github_repository`**
-- Format: `owner/repository-name`
-- Example: `john/homeassistant-config`
-- The GitHub repository where your config will be synced
+**`repo_url`**
+- The full HTTPS clone URL of your repository
+- Example (GitHub): `https://github.com/john/homeassistant-config.git`
+- Example (Gitea/self-hosted): `https://gitea.example.com/john/homeassistant-config.git`
+- This is the URL your Git host shows you for "clone with HTTPS" - copy and paste it directly
 
-**`github_token`**
-- Your GitHub Personal Access Token
-- Starts with `ghp_`
+**`git_token`**
+- Your access token for the host above
 - Keep this secret!
+
+**`git_auth_user`**
+- Only needed if your host requires a username paired with the token (Gitea, GitLab, and most self-hosted servers do; GitHub does not)
+- Leave blank for GitHub
 
 **`git_user_name`**
 - The name that will appear in Git commits
@@ -88,12 +105,12 @@ The addon is configured through the Home Assistant UI.
 ### First Time Setup
 
 1. **Install the addon** following the README instructions
-2. **Configure** with your GitHub details
+2. **Configure** with your repository details
 3. **Start** the addon
 4. **Check logs** to verify it's working:
    ```
    HA Config Sync Addon Starting
-   Repository: your-user/your-repo
+   Repository: https://github.com/your-user/your-repo.git
    Branch: main
    Sync interval: 900s
    Watched files: automations.yaml, .HA_VERSION
@@ -108,7 +125,7 @@ The addon runs continuously in the background. When a watched file changes:
 2. An MD5 hash is calculated to verify actual content change
 3. The change is buffered
 4. At the next sync interval, changes are committed
-5. Changes are pushed to GitHub
+5. Changes are pushed to your Git remote
 
 You can view the addon's activity in the logs at any time.
 
@@ -118,7 +135,7 @@ When you stop the addon:
 
 1. File watching stops
 2. Any pending changes are committed immediately
-3. Changes are pushed to GitHub
+3. Changes are pushed to your Git remote
 4. The addon shuts down gracefully
 
 ## Advanced Usage
@@ -129,7 +146,7 @@ If you want to use a dev/master workflow:
 
 1. Set `branch: dev` in the configuration
 2. The addon will push to the `dev` branch
-3. You can merge `dev` → `master` manually on GitHub
+3. You can merge `dev` → `master` manually on your Git host
 
 ### Selective File Watching
 
@@ -178,13 +195,13 @@ View the addon logs:
    Detected change in /config/automations.yaml
    Sync interval reached, committing changes
    Created commit: abc123 - chore(ha): auto-sync automations.yaml
-   Successfully pushed to GitHub
+   Successfully pushed to remote
    ```
 
-### GitHub Verification
+### Remote Verification
 
-Check your GitHub repository to see commits:
-1. Go to your repository on GitHub
+Check your repository on its host to see commits:
+1. Go to your repository
 2. Click **Commits**
 3. You should see automated commits from the addon
 
@@ -192,7 +209,7 @@ Check your GitHub repository to see commits:
 
 ### Common Issues
 
-**"GITHUB_REPO environment variable is required"**
+**"REPO_URL environment variable is required"**
 - The addon configuration is missing or incomplete
 - Go to Configuration tab and fill in all required fields
 
@@ -202,9 +219,10 @@ Check your GitHub repository to see commits:
 - The addon will initialize the repository
 
 **"Push failed: error"**
-- Check your GitHub token is valid
+- Check your token is valid
 - Verify the repository exists
-- Ensure your token has `repo` permissions
+- Ensure your token has push/write permissions
+- If your host needs a username paired with the token (Gitea, GitLab, most self-hosted servers), check `git_auth_user` is set
 - Check for branch protection rules
 
 **"No changes to commit (files may be unchanged)"**
@@ -225,8 +243,8 @@ After configuration, test the addon:
 1. Start the addon
 2. Make a change in Home Assistant UI (e.g., create an automation)
 3. Wait for the sync interval (default 15 minutes) or restart the addon to force a sync
-4. Check the logs for "Successfully pushed to GitHub"
-5. Verify the commit appears on GitHub
+4. Check the logs for "Successfully pushed to remote"
+5. Verify the commit appears in your repository
 
 ## Best Practices
 
@@ -249,7 +267,7 @@ After configuration, test the addon:
 ### Maintenance
 
 1. **Monitor logs** periodically for errors
-2. **Check GitHub** to ensure commits are appearing
+2. **Check your repository** to ensure commits are appearing
 3. **Update the addon** when new versions are released
 4. **Review commits** to ensure only expected changes are synced
 
@@ -257,17 +275,17 @@ After configuration, test the addon:
 
 This addon complements a GitOps workflow:
 
-1. **Production HA** → Uses this addon to push changes → **GitHub**
-2. **GitHub** → CI/CD validates → **Deploys to test/dev**
-3. **Local development** → Manual commits → **GitHub**
-4. **GitHub** → Manual sync → **Production HA**
+1. **Production HA** → Uses this addon to push changes → **your Git host**
+2. **Your Git host** → CI/CD validates → **Deploys to test/dev**
+3. **Local development** → Manual commits → **your Git host**
+4. **Your Git host** → Manual sync → **Production HA**
 
 This creates a bidirectional sync:
-- UI changes go to GitHub automatically
+- UI changes go to your repository automatically
 - Code changes can be pulled to HA manually
 
 ## Support
 
 For issues, questions, or feature requests:
-- [GitHub Issues](https://github.com/karl-vanderslice/ha-config-sync-addon/issues)
-- [Discussions](https://github.com/karl-vanderslice/ha-config-sync-addon/discussions)
+- [GitHub Issues](https://github.com/CV8R/ha-config-sync-addon/issues)
+- [Discussions](https://github.com/CV8R/ha-config-sync-addon/discussions)

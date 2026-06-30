@@ -7,29 +7,32 @@
 bashio::log.info "Starting HA Config Sync addon..."
 
 # Read configuration
-export GITHUB_REPO=$(bashio::config 'github_repository')
-export GITHUB_TOKEN=$(bashio::config 'github_token')
+export REPO_URL=$(bashio::config 'repo_url')
+export GIT_TOKEN=$(bashio::config 'git_token')
+export GIT_AUTH_USER=$(bashio::config 'git_auth_user' '')
 export GIT_USER_NAME=$(bashio::config 'git_user_name')
 export GIT_USER_EMAIL=$(bashio::config 'git_user_email')
 export BRANCH=$(bashio::config 'branch' 'main')
 export SYNC_INTERVAL=$(bashio::config 'sync_interval' '900')
 export COMMIT_MSG_TEMPLATE=$(bashio::config 'commit_message_template' 'chore(ha): auto-sync {files}')
 
-# Export watched files as JSON array
-export WATCHED_FILES=$(bashio::config 'watched_files' | jq -c '.')
+# Export watched files as a JSON array. bashio::config.json returns the
+# option's raw JSON straight from options.json, so no manual line-splitting
+# or jq parsing of plain-text output is needed (that was the previous bug).
+export WATCHED_FILES=$(bashio::config.json 'watched_files')
 
 # Validate required configuration
-if [ -z "$GITHUB_REPO" ]; then
-    bashio::log.fatal "GitHub repository is not configured!"
+if [ -z "$REPO_URL" ]; then
+    bashio::log.fatal "Git repository URL is not configured!"
     exit 1
 fi
 
-if [ -z "$GITHUB_TOKEN" ]; then
-    bashio::log.fatal "GitHub token is not configured!"
+if [ -z "$GIT_TOKEN" ]; then
+    bashio::log.fatal "Git token is not configured!"
     exit 1
 fi
 
-bashio::log.info "Repository: ${GITHUB_REPO}"
+bashio::log.info "Repository: ${REPO_URL}"
 bashio::log.info "Branch: ${BRANCH}"
 bashio::log.info "Sync interval: ${SYNC_INTERVAL}s"
 bashio::log.info "Watched files: ${WATCHED_FILES}"

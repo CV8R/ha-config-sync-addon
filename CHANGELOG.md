@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-06-30
+
+### Added
+- Support for any self-hosted Git server (Gitea, GitLab, etc), not just GitHub - paste any HTTPS clone URL
+- New `git_auth_user` option for hosts that require username:token basic auth
+
+### Changed
+- `github_repository`/`github_token` options replaced with `repo_url`/`git_token` (now host-agnostic)
+- `GitHubSync` class renamed to `GitRemoteSync`
+
+### Fixed
+- `watched_files` no longer fails to parse on startup - `run.sh` now uses `bashio::config.json` instead of piping plain-text `bashio::config` output through `jq`, which was never valid JSON
+- Local Docker builds no longer fail on `pip3 install` due to PEP 668's externally-managed-environment restriction (added `--break-system-packages`)
+- Removed hardcoded `image:` reference to a GHCR package that was never published, which caused install failures
+
 ## [Unreleased]
 
 ### Added

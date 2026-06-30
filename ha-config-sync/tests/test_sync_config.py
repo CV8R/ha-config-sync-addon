@@ -20,7 +20,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "rootfs" / "usr" / "bin"))
 
-from sync_config import ConfigSyncHandler, ConfigSyncService, GitHubSync
+from sync_config import ConfigSyncHandler, ConfigSyncService, GitRemoteSync
 
 
 class TestConfigSyncHandler:
@@ -136,8 +136,8 @@ class TestConfigSyncHandler:
             os.unlink(temp_path)
 
 
-class TestGitHubSync:
-    """Tests for the GitHubSync class."""
+class TestGitRemoteSync:
+    """Tests for the GitRemoteSync class."""
 
     @pytest.fixture
     def temp_repo(self):
@@ -158,10 +158,10 @@ class TestGitHubSync:
 
     def test_add_pending_change(self, temp_repo):
         """Test adding pending changes."""
-        sync = GitHubSync(
+        sync = GitRemoteSync(
             repo_path=str(temp_repo),
-            github_repo="user/repo",
-            github_token="fake_token",
+            repo_url="https://example.com/user/repo.git",
+            git_token="fake_token",
         )
 
         test_file = temp_repo / "automations.yaml"
@@ -172,10 +172,10 @@ class TestGitHubSync:
 
     def test_has_pending_changes(self, temp_repo):
         """Test checking for pending changes."""
-        sync = GitHubSync(
+        sync = GitRemoteSync(
             repo_path=str(temp_repo),
-            github_repo="user/repo",
-            github_token="fake_token",
+            repo_url="https://example.com/user/repo.git",
+            git_token="fake_token",
         )
 
         assert not sync.has_pending_changes()
@@ -187,10 +187,10 @@ class TestGitHubSync:
 
     def test_commit_and_push_no_changes(self, temp_repo):
         """Test commit with no pending changes."""
-        sync = GitHubSync(
+        sync = GitRemoteSync(
             repo_path=str(temp_repo),
-            github_repo="user/repo",
-            github_token="fake_token",
+            repo_url="https://example.com/user/repo.git",
+            git_token="fake_token",
         )
 
         result = sync.commit_and_push()
@@ -204,10 +204,10 @@ class TestGitHubSync:
         push_info.flags = 0  # No error flag
         mock_push.return_value = [push_info]
 
-        sync = GitHubSync(
+        sync = GitRemoteSync(
             repo_path=str(temp_repo),
-            github_repo="user/repo",
-            github_token="fake_token",
+            repo_url="https://example.com/user/repo.git",
+            git_token="fake_token",
             commit_msg_template="test: {files}",
         )
 
@@ -233,10 +233,10 @@ class TestGitHubSync:
         push_info.summary = "Push failed"
         mock_push.return_value = [push_info]
 
-        sync = GitHubSync(
+        sync = GitRemoteSync(
             repo_path=str(temp_repo),
-            github_repo="user/repo",
-            github_token="fake_token",
+            repo_url="https://example.com/user/repo.git",
+            git_token="fake_token",
         )
 
         # Create and modify a file
@@ -259,10 +259,10 @@ class TestGitHubSync:
         version_file = temp_repo / ".HA_VERSION"
         version_file.write_text("2024.1.0\n")
 
-        sync = GitHubSync(
+        sync = GitRemoteSync(
             repo_path=str(temp_repo),
-            github_repo="user/repo",
-            github_token="fake_token",
+            repo_url="https://example.com/user/repo.git",
+            git_token="fake_token",
             commit_msg_template="chore(ha): {files} [HA {ha_version}] ({git_hash})",
         )
 
@@ -290,10 +290,10 @@ class TestGitHubSync:
         """Test successful pull."""
         mock_pull.return_value = None
 
-        sync = GitHubSync(
+        sync = GitRemoteSync(
             repo_path=str(temp_repo),
-            github_repo="user/repo",
-            github_token="fake_token",
+            repo_url="https://example.com/user/repo.git",
+            git_token="fake_token",
         )
 
         result = sync.pull_latest()
@@ -304,10 +304,10 @@ class TestGitHubSync:
         """Test failed pull."""
         mock_pull.side_effect = git.GitCommandError("pull", "error")
 
-        sync = GitHubSync(
+        sync = GitRemoteSync(
             repo_path=str(temp_repo),
-            github_repo="user/repo",
-            github_token="fake_token",
+            repo_url="https://example.com/user/repo.git",
+            git_token="fake_token",
         )
 
         result = sync.pull_latest()
@@ -321,8 +321,8 @@ class TestConfigSyncService:
     def mock_env(self):
         """Mock environment variables."""
         env = {
-            "GITHUB_REPO": "user/repo",
-            "GITHUB_TOKEN": "fake_token",
+            "REPO_URL": "https://example.com/user/repo.git",
+            "GIT_TOKEN": "fake_token",
             "GIT_USER_NAME": "Test User",
             "GIT_USER_EMAIL": "test@example.com",
             "BRANCH": "main",
@@ -347,39 +347,39 @@ class TestConfigSyncService:
         """Test successful configuration validation."""
         with patch("sync_config.Path", return_value=mock_config_dir):
             service = ConfigSyncService()
-            assert service.github_repo == "user/repo"
-            assert service.github_token == "fake_token"
+            assert service.repo_url == "https://example.com/user/repo.git"
+            assert service.git_token == "fake_token"
             assert service.watched_files == ["automations.yaml", ".HA_VERSION"]
 
     def test_validate_config_missing_repo(self, mock_config_dir):
-        """Test validation with missing GitHub repo."""
+        """Test validation with missing repo URL."""
         env = {
-            "GITHUB_TOKEN": "fake_token",
+            "GIT_TOKEN": "fake_token",
             "WATCHED_FILES": json.dumps(["test.yaml"]),
         }
 
         with patch.dict(os.environ, env, clear=True):
             with patch("sync_config.Path", return_value=mock_config_dir):
-                with pytest.raises(ValueError, match="GITHUB_REPO.*required"):
+                with pytest.raises(ValueError, match="REPO_URL.*required"):
                     ConfigSyncService()
 
     def test_validate_config_missing_token(self, mock_config_dir):
-        """Test validation with missing GitHub token."""
+        """Test validation with missing git token."""
         env = {
-            "GITHUB_REPO": "user/repo",
+            "REPO_URL": "https://example.com/user/repo.git",
             "WATCHED_FILES": json.dumps(["test.yaml"]),
         }
 
         with patch.dict(os.environ, env, clear=True):
             with patch("sync_config.Path", return_value=mock_config_dir):
-                with pytest.raises(ValueError, match="GITHUB_TOKEN.*required"):
+                with pytest.raises(ValueError, match="GIT_TOKEN.*required"):
                     ConfigSyncService()
 
     def test_validate_config_no_watched_files(self, mock_config_dir):
         """Test validation with no watched files."""
         env = {
-            "GITHUB_REPO": "user/repo",
-            "GITHUB_TOKEN": "fake_token",
+            "REPO_URL": "https://example.com/user/repo.git",
+            "GIT_TOKEN": "fake_token",
             "WATCHED_FILES": json.dumps([]),
         }
 
@@ -408,11 +408,11 @@ class TestConfigSyncService:
         """Test file change callback."""
         with patch("sync_config.Path", return_value=mock_config_dir):
             service = ConfigSyncService()
-            service.github_sync = Mock()
+            service.git_sync = Mock()
 
             service._on_file_change("/config/automations.yaml")
 
-            service.github_sync.add_pending_change.assert_called_once_with(
+            service.git_sync.add_pending_change.assert_called_once_with(
                 "/config/automations.yaml"
             )
 
@@ -434,8 +434,8 @@ class TestIntegration:
             repo.index.commit("Initial commit")
 
             env = {
-                "GITHUB_REPO": "user/repo",
-                "GITHUB_TOKEN": "fake_token",
+                "REPO_URL": "https://example.com/user/repo.git",
+                "GIT_TOKEN": "fake_token",
                 "GIT_USER_NAME": "Test User",
                 "GIT_USER_EMAIL": "test@example.com",
                 "BRANCH": "main",
@@ -473,14 +473,14 @@ class TestIntegration:
         service._on_file_change(str(watched_file))
 
         # Verify pending changes
-        assert service.github_sync.has_pending_changes()
+        assert service.git_sync.has_pending_changes()
 
         # Commit and push
-        result = service.github_sync.commit_and_push()
+        result = service.git_sync.commit_and_push()
         assert result is True
 
         # Verify no pending changes after push
-        assert not service.github_sync.has_pending_changes()
+        assert not service.git_sync.has_pending_changes()
 
         # Verify push was called
         mock_push.assert_called()

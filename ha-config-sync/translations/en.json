@@ -1,12 +1,16 @@
 {
     "configuration": {
-        "github_repository": {
-            "name": "GitHub Repository",
-            "description": "GitHub repository in format owner/repo (e.g., john/homeassistant-config)"
+        "repo_url": {
+            "name": "Repository URL",
+            "description": "Full HTTPS clone URL of your config repository, e.g. https://github.com/owner/repo.git or https://gitea.example.com/owner/repo.git. Works with GitHub, Gitea, GitLab, or any self-hosted Git server."
         },
-        "github_token": {
-            "name": "GitHub Token",
-            "description": "GitHub Personal Access Token with repo permissions"
+        "git_token": {
+            "name": "Git Token",
+            "description": "Personal/API access token for the Git host above, with permission to push to the repository"
+        },
+        "git_auth_user": {
+            "name": "Git Auth User",
+            "description": "Optional. Some hosts (Gitea, GitLab, self-hosted servers) require a username paired with the token. Leave blank for GitHub, where the token alone is sufficient."
         },
         "git_user_name": {
             "name": "Git User Name",

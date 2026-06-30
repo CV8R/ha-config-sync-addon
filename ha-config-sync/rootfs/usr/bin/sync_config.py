@@ -3,7 +3,8 @@
 Home Assistant Config Sync Addon
 
 Monitors Home Assistant configuration files and automatically commits
-changes to a GitHub repository.
+changes to a remote Git repository (GitHub, Gitea, GitLab, or any other
+self-hosted Git host that supports HTTPS token authentication).
 
 This addon runs as a no-op for Home Assistant itself - it only interacts
 with the filesystem and git, not the HA APIs.
@@ -18,6 +19,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set
+from urllib.parse import urlsplit, urlunsplit
 
 import git
 from watchdog.events import FileSystemEventHandler
@@ -84,36 +86,71 @@ class ConfigSyncHandler(FileSystemEventHandler):
                 self.callback(event.src_path)
 
 
-class GitHubSync:
-    """Handles Git operations and GitHub synchronization."""
+class GitRemoteSync:
+    """Handles Git operations and synchronization with a remote repository.
+
+    Works with any Git host that supports HTTPS token authentication
+    (GitHub, Gitea, Forgejo, GitLab, self-hosted servers, etc). The host
+    is taken from whatever URL the user pastes in - nothing is hardcoded
+    to github.com.
+    """
 
     def __init__(
         self,
         repo_path: str,
-        github_repo: str,
-        github_token: str,
+        repo_url: str,
+        git_token: str,
+        git_auth_user: str = "",
         branch: str = "main",
         commit_msg_template: str = "chore(ha): auto-sync {files}",
     ):
         """
-        Initialize GitHub sync.
+        Initialize git sync.
 
         Args:
             repo_path: Path to the git repository (HA config dir)
-            github_repo: GitHub repository in format owner/repo
-            github_token: GitHub personal access token
+            repo_url: Full HTTPS clone URL of the remote repository,
+                e.g. https://github.com/owner/repo.git or
+                https://gitea.example.com/owner/repo.git
+            git_token: Personal/API access token for the remote
+            git_auth_user: Username to pair with the token, if the host
+                requires basic auth in the form username:token (e.g.
+                Gitea, GitLab). Leave blank for hosts like GitHub that
+                accept the token alone as the username.
             branch: Git branch to push to
             commit_msg_template: Template for commit messages
         """
         self.repo_path = Path(repo_path)
-        self.github_repo = github_repo
-        self.github_token = github_token
+        self.repo_url = repo_url
+        self.git_token = git_token
+        self.git_auth_user = git_auth_user
         self.branch = branch
         self.commit_msg_template = commit_msg_template
         self.repo = None
         self.pending_changes: Set[str] = set()
 
         self._initialize_repo()
+
+    def _build_authenticated_url(self) -> str:
+        """Insert the token (and optional username) into the repo URL.
+
+        Strips any credentials already present in the pasted URL, then
+        rebuilds the netloc with the configured token so this works for
+        any host, not just github.com.
+        """
+        parsed = urlsplit(self.repo_url)
+        scheme = parsed.scheme or "https"
+        host = parsed.hostname or ""
+        if parsed.port:
+            host = f"{host}:{parsed.port}"
+
+        if self.git_auth_user:
+            credentials = f"{self.git_auth_user}:{self.git_token}"
+        else:
+            credentials = self.git_token
+
+        netloc = f"{credentials}@{host}" if host else credentials
+        return urlunsplit((scheme, netloc, parsed.path, "", ""))
 
     def _initialize_repo(self):
         """Initialize or open the git repository."""
@@ -126,8 +163,8 @@ class GitHubSync:
                 logger.info(f"Opening existing git repository at {self.repo_path}")
                 self.repo = git.Repo(self.repo_path)
 
-            # Configure remote with token
-            remote_url = f"https://{self.github_token}@github.com/{self.github_repo}.git"
+            # Configure remote with token injected into the pasted URL
+            remote_url = self._build_authenticated_url()
 
             try:
                 origin = self.repo.remote("origin")
@@ -176,7 +213,7 @@ class GitHubSync:
 
     def commit_and_push(self) -> bool:
         """
-        Commit pending changes and push to GitHub.
+        Commit pending changes and push to the remote repository.
 
         Returns:
             True if successful, False otherwise
@@ -229,8 +266,8 @@ class GitHubSync:
             commit = self.repo.index.commit(commit_msg)
             logger.info(f"Created commit: {commit.hexsha[:7]} - {commit_msg}")
 
-            # Push to GitHub
-            logger.info(f"Pushing to {self.github_repo}:{self.branch}")
+            # Push to remote
+            logger.info(f"Pushing to {self.repo_url}:{self.branch}")
             origin = self.repo.remote("origin")
             push_info = origin.push(self.branch)
 
@@ -239,7 +276,7 @@ class GitHubSync:
                 logger.error(f"Push failed: {push_info[0].summary}")
                 return False
 
-            logger.info("Successfully pushed to GitHub")
+            logger.info("Successfully pushed to remote")
             self.pending_changes.clear()
             return True
 
@@ -252,13 +289,13 @@ class GitHubSync:
 
     def pull_latest(self) -> bool:
         """
-        Pull latest changes from GitHub.
+        Pull latest changes from the remote repository.
 
         Returns:
             True if successful, False otherwise
         """
         try:
-            logger.info("Pulling latest changes from GitHub")
+            logger.info("Pulling latest changes from remote")
             origin = self.repo.remote("origin")
             origin.pull(self.branch)
             logger.info("Successfully pulled latest changes")
@@ -277,8 +314,9 @@ class ConfigSyncService:
     def __init__(self):
         """Initialize the sync service."""
         self.config_path = Path("/config")
-        self.github_repo = os.getenv("GITHUB_REPO")
-        self.github_token = os.getenv("GITHUB_TOKEN")
+        self.repo_url = os.getenv("REPO_URL")
+        self.git_token = os.getenv("GIT_TOKEN")
+        self.git_auth_user = os.getenv("GIT_AUTH_USER", "")
         self.git_user_name = os.getenv("GIT_USER_NAME", "Home Assistant")
         self.git_user_email = os.getenv("GIT_USER_EMAIL", "ha@example.com")
         self.branch = os.getenv("BRANCH", "main")
@@ -291,7 +329,7 @@ class ConfigSyncService:
         watched_files_json = os.getenv("WATCHED_FILES", "[]")
         self.watched_files = json.loads(watched_files_json)
 
-        self.github_sync = None
+        self.git_sync = None
         self.observer = None
         self.last_sync_time = 0
 
@@ -299,10 +337,10 @@ class ConfigSyncService:
 
     def _validate_config(self):
         """Validate configuration."""
-        if not self.github_repo:
-            raise ValueError("GITHUB_REPO environment variable is required")
-        if not self.github_token:
-            raise ValueError("GITHUB_TOKEN environment variable is required")
+        if not self.repo_url:
+            raise ValueError("REPO_URL environment variable is required")
+        if not self.git_token:
+            raise ValueError("GIT_TOKEN environment variable is required")
         if not self.watched_files:
             raise ValueError("No files configured to watch")
         if not self.config_path.exists():
@@ -313,7 +351,7 @@ class ConfigSyncService:
     def _on_file_change(self, file_path: str):
         """Handle file change event."""
         logger.info(f"File changed: {file_path}")
-        self.github_sync.add_pending_change(file_path)
+        self.git_sync.add_pending_change(file_path)
 
     def _should_sync(self) -> bool:
         """Check if it's time to sync."""
@@ -328,23 +366,24 @@ class ConfigSyncService:
         logger.info("HA Config Sync Addon Starting")
         logger.info("=" * 60)
         logger.info(f"Config path: {self.config_path}")
-        logger.info(f"GitHub repo: {self.github_repo}")
+        logger.info(f"Repository: {self.repo_url}")
         logger.info(f"Branch: {self.branch}")
         logger.info(f"Sync interval: {self.sync_interval}s")
         logger.info(f"Watched files: {', '.join(self.watched_files)}")
         logger.info("=" * 60)
 
-        # Initialize GitHub sync
-        self.github_sync = GitHubSync(
+        # Initialize git sync
+        self.git_sync = GitRemoteSync(
             repo_path=str(self.config_path),
-            github_repo=self.github_repo,
-            github_token=self.github_token,
+            repo_url=self.repo_url,
+            git_token=self.git_token,
+            git_auth_user=self.git_auth_user,
             branch=self.branch,
             commit_msg_template=self.commit_msg_template,
         )
 
         # Pull latest changes on startup
-        self.github_sync.pull_latest()
+        self.git_sync.pull_latest()
 
         # Set up file watcher
         event_handler = ConfigSyncHandler(
@@ -361,9 +400,9 @@ class ConfigSyncService:
                 time.sleep(30)  # Check every 30 seconds
 
                 # Periodic sync check
-                if self._should_sync() and self.github_sync.has_pending_changes():
+                if self._should_sync() and self.git_sync.has_pending_changes():
                     logger.info("Sync interval reached, committing changes")
-                    if self.github_sync.commit_and_push():
+                    if self.git_sync.commit_and_push():
                         self.last_sync_time = time.time()
 
         except KeyboardInterrupt:
@@ -380,9 +419,9 @@ class ConfigSyncService:
             self.observer.join()
 
         # Commit any pending changes before shutdown
-        if self.github_sync and self.github_sync.has_pending_changes():
+        if self.git_sync and self.git_sync.has_pending_changes():
             logger.info("Committing pending changes before shutdown")
-            self.github_sync.commit_and_push()
+            self.git_sync.commit_and_push()
 
         logger.info("Sync service stopped")
 
