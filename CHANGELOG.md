@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-30
+
+### Added
+- Startup sync: watched files that are untracked or have uncommitted local changes are now committed and pushed once at addon startup, before the file watcher takes over. Covers files newly added to `watched_files`, files that predate the addon, and edits made while the addon was stopped
+
+### Fixed
+- File saves that write via a temp-file-then-rename (confirmed on Home Assistant's automation editor by an inode change across saves) are now detected. `ConfigSyncHandler` previously only implemented `on_modified`; `on_created` and `on_moved` are now handled too
+
 ## [1.1.0] - 2026-06-30
 
 ### Added
@@ -16,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GitHubSync` class renamed to `GitRemoteSync`
 
 ### Fixed
-- `watched_files` no longer fails to parse on startup - `run.sh` now uses `bashio::config.json` instead of piping plain-text `bashio::config` output through `jq`, which was never valid JSON
+- `watched_files` no longer fails to parse on startup - `run.sh` now reads the option's raw JSON directly from `/data/options.json` via `jq`, instead of piping plain-text `bashio::config` output through `jq`, which was never valid JSON
 - Local Docker builds no longer fail on `pip3 install` due to PEP 668's externally-managed-environment restriction (added `--break-system-packages`)
 - Removed hardcoded `image:` reference to a GHCR package that was never published, which caused install failures
 

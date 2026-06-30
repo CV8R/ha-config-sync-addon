@@ -1,6 +1,6 @@
 ---
 name: HA Config Sync
-version: "1.1.0"
+version: "1.2.0"
 slug: ha-config-sync
 description: Automatically sync Home Assistant configuration changes to GitHub, Gitea, or any self-hosted Git server
 url: https://github.com/CV8R/ha-config-sync-addon

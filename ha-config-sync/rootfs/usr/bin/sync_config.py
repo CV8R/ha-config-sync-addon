@@ -328,6 +328,46 @@ class GitRemoteSync:
             logger.error(f"Error pulling changes: {e}")
             return False
 
+    def find_unsynced_files(self, watched_files: List[str]) -> List[str]:
+        """
+        Check which watched files exist locally but aren't yet committed.
+
+        Covers files newly added to watched_files, files that predate the
+        addon being installed, and files with uncommitted local edits -
+        anything git status would flag as untracked or modified.
+
+        Args:
+            watched_files: List of filenames (relative to repo_path) to check
+
+        Returns:
+            List of filenames that exist on disk and are untracked or
+            modified relative to the last commit
+        """
+        try:
+            status_output = self.repo.git.status("--porcelain")
+        except git.GitCommandError as e:
+            logger.error(f"Error checking repository status: {e}")
+            return []
+
+        changed_paths: Set[str] = set()
+        for line in status_output.splitlines():
+            if not line:
+                continue
+            # Porcelain format: "XY path" or "XY orig -> path" for renames
+            path = line[3:].strip()
+            if " -> " in path:
+                path = path.split(" -> ")[-1]
+            changed_paths.add(path)
+
+        unsynced = []
+        for filename in watched_files:
+            full_path = self.repo_path / filename
+            if not full_path.exists():
+                continue
+            if filename in changed_paths:
+                unsynced.append(filename)
+        return unsynced
+
 
 class ConfigSyncService:
     """Main service that coordinates file watching and Git sync."""
@@ -405,6 +445,20 @@ class ConfigSyncService:
 
         # Pull latest changes on startup
         self.git_sync.pull_latest()
+
+        # Catch any watched files that exist locally but aren't yet
+        # committed - new watched_files entries, files that predate the
+        # addon, or files with uncommitted local edits at startup.
+        unsynced = self.git_sync.find_unsynced_files(self.watched_files)
+        if unsynced:
+            logger.info(
+                f"Found {len(unsynced)} watched file(s) not yet synced: "
+                f"{', '.join(unsynced)}"
+            )
+            for filename in unsynced:
+                self.git_sync.add_pending_change(str(self.config_path / filename))
+            if self.git_sync.commit_and_push():
+                self.last_sync_time = time.time()
 
         # Set up file watcher
         event_handler = ConfigSyncHandler(
