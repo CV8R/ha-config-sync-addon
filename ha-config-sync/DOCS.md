@@ -165,6 +165,20 @@ Don't watch:
 - `*.db` files - Database files
 - Custom components - Usually managed separately
 
+### Checking for unwatched config files
+
+`watched_files` is a manual allowlist — new files added to `/config` won't be backed up until you add them here yourself.
+
+To check for `.yaml` files in `/config` that aren't yet listed, run this from the Terminal & SSH addon (or Studio Code Server's terminal):
+
+```bash
+ls -1 /config/*.yaml | xargs -n1 basename | grep -v secrets.yaml
+```
+
+Review the output against your current `watched_files` list and add anything missing. Note this only checks the `/config` root — files in subfolders won't be listed.
+
+**Never add `secrets.yaml` to `watched_files`.**
+
 ### Commit Message Customization
 
 You can customize commit messages using available variables:
